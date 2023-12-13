@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "365192131891",
+    "project_id": "roadeye-be16",
+    "storage_bucket": "roadeye-be16.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:365192131891:android:9269ad80ce8ce30525ba46",
+        "android_client_info": {
+          "package_name": "com.example.roadeye"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD8vig0Zbx6IKi1k_-vIIk0KLT0zlrnHrQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
