@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:google_nav_bar/google_nav_bar.dart';
+import 'package:roadeye/screens/map/LiveTracking.dart';
 import 'package:roadeye/screens/map/MapScreen.dart';
 import '../detection/DetectionPage.dart';
 import 'HeroSection.dart';
@@ -23,7 +24,8 @@ class _HomeScreenState extends State<HomeScreen> {
         index: _selectedIndex,
         children: [
           HeroSectionPage(),
-          MapScreen(),
+          // MapScreen(),
+          LiveTracking(),
           PotholeDetector(),
         ],
       ),

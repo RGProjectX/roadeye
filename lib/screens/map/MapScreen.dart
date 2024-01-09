@@ -29,7 +29,7 @@ class _MapScreenState extends State<MapScreen> {
     super.initState();
     _getCurrentLocation();
     _listenForMarkerUpdates();
-    _startLocationUpdateTask();
+    // _startLocationUpdateTask();
   }
 
   @override

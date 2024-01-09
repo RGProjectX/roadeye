@@ -164,18 +164,18 @@ class _HeroSectionPageState extends State<HeroSectionPage> {
                             ),
                             RichText(
                                 text: TextSpan(
-                                    text: '18°',
+                                    text: '23°',
                                     style: GoogleFonts.montserrat(
                                         fontSize: 22,
                                         fontWeight: FontWeight.w600),
                                     children: const <TextSpan>[
                                   TextSpan(
-                                      text: ' Cloudy',
+                                      text: ' Clear',
                                       style: TextStyle(
                                           fontSize: 18,
                                           fontWeight: FontWeight.w400)),
                                   TextSpan(
-                                      text: '\nVIVA Institute Of Technology',
+                                      text: '\nVivekanand Education Society',
                                       style: TextStyle(
                                           fontSize: 14,
                                           fontWeight: FontWeight.normal))

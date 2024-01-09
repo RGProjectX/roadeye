@@ -1,7 +1,12 @@
 import 'package:camera/camera.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:dart_geohash/dart_geohash.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_vision/flutter_vision.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:geocoding/geocoding.dart';
+import 'package:logger/logger.dart';
 
 class YoloVideo extends StatefulWidget {
   final FlutterVision vision;
@@ -13,12 +18,15 @@ class YoloVideo extends StatefulWidget {
 }
 
 class _YoloVideoState extends State<YoloVideo> {
+  var logger = Logger();
   late List<CameraDescription> cameras;
   late CameraController controller;
   late List<Map<String, dynamic>> yoloResults;
   CameraImage? cameraImage;
   bool isLoaded = false;
+  String _currentAddress = '';
   bool isDetecting = false;
+  int totalPotholes = 0;
 
   @override
   void initState() {
@@ -38,6 +46,91 @@ class _YoloVideoState extends State<YoloVideo> {
         });
       });
     });
+  }
+
+  Future<void> _getCurrentLocation() async {
+    final GeolocatorPlatform geolocator = GeolocatorPlatform.instance;
+    final LocationPermission permission = await geolocator.requestPermission();
+
+    if (permission == LocationPermission.denied) {
+      setState(() {
+        _currentAddress = "Location permission denied";
+      });
+      return;
+    }
+
+    if (permission == LocationPermission.deniedForever) {
+      Geolocator.openAppSettings();
+      return;
+    }
+
+    if (permission == LocationPermission.always ||
+        permission == LocationPermission.whileInUse) {
+      try {
+        final Position position = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high,
+        );
+
+        final List<Placemark> placemarks = await placemarkFromCoordinates(
+          position.latitude,
+          position.longitude,
+        );
+
+        if (placemarks.isNotEmpty) {
+          final Placemark place = placemarks[0];
+          final String address =
+              '${place.street}, ${place.subLocality}, ${place.name}, ${place.administrativeArea}, ${place.postalCode}';
+          logger.d(address);
+          if (totalPotholes > 0) {
+            addPotholeIfNotExists(position, address);
+          }
+
+          setState(() {
+            _currentAddress = address;
+          });
+        } else {
+          setState(() {
+            _currentAddress = "Address not found";
+          });
+        }
+      } catch (e) {
+        logger.e("Error in fetching location", error: e);
+      }
+    }
+  }
+
+  Future<void> addPotholeIfNotExists(Position position, String address) async {
+    try {
+      // Convert GeoPoint to LatLng and calculate geohash
+      GeoHasher geoHasher = GeoHasher();
+      final geoHash =
+          geoHasher.encode(position.latitude, position.longitude, precision: 7);
+
+      // Reference to Firestore collection
+      CollectionReference potholes =
+          FirebaseFirestore.instance.collection('potholes');
+
+      // Query for similar GeoPoints
+      QuerySnapshot querySnapshot =
+          await potholes.where('geohash', isEqualTo: geoHash).get();
+
+      // Check if similar GeoPoints exist
+      if (querySnapshot.docs.isEmpty) {
+        // No similar GeoPoint, add new one
+        potholes.add({
+          'latitude': position.latitude,
+          'longitude': position.longitude,
+          'geohash': geoHash,
+          'address': address,
+          'timestamp': FieldValue.serverTimestamp(),
+        });
+      } else {
+        logger.d('A similar GeoPoint already exists');
+        // Optionally update existing document or take other actions
+      }
+    } catch (e) {
+      logger.d('Error accessing Firestore: ${e.toString()}');
+    }
   }
 
   @override
@@ -70,38 +163,44 @@ class _YoloVideoState extends State<YoloVideo> {
           Positioned(
             bottom: 75,
             width: MediaQuery.of(context).size.width,
-            child: Container(
-              height: 80,
-              width: 80,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(
-                  width: 5,
-                  color: Colors.white,
-                  style: BorderStyle.solid,
-                ),
-              ),
-              child: isDetecting
-                  ? IconButton(
-                      onPressed: () async {
-                        stopDetection();
-                      },
-                      icon: const Icon(
-                        Icons.stop,
-                        color: Colors.red,
-                      ),
-                      iconSize: 50,
-                    )
-                  : IconButton(
-                      onPressed: () async {
-                        await startDetection();
-                      },
-                      icon: const Icon(
-                        Icons.play_arrow,
-                        color: Colors.white,
-                      ),
-                      iconSize: 50,
+            child: Column(
+              children: [
+                Container(
+                  height: 80,
+                  width: 80,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      width: 5,
+                      color: Colors.white,
+                      style: BorderStyle.solid,
                     ),
+                  ),
+                  child: isDetecting
+                      ? IconButton(
+                          onPressed: () async {
+                            stopDetection();
+                          },
+                          icon: const Icon(
+                            Icons.stop,
+                            color: Colors.red,
+                          ),
+                          iconSize: 50,
+                        )
+                      : IconButton(
+                          onPressed: () async {
+                            await startDetection();
+                          },
+                          icon: const Icon(
+                            Icons.play_arrow,
+                            color: Colors.white,
+                          ),
+                          iconSize: 50,
+                        ),
+                ),
+                SizedBox(height: 10),
+                Text(_currentAddress)
+              ],
             ),
           ),
         ],
@@ -132,12 +231,19 @@ class _YoloVideoState extends State<YoloVideo> {
       classThreshold: 0.2,
     );
     if (result.isNotEmpty) {
-      setState(() {
-        yoloResults = result;
-      });
+      if (mounted) {
+        setState(() {
+          yoloResults = result;
+          totalPotholes = yoloResults.length;
+        });
+      }
+
+      if (totalPotholes > 0) {
+        _getCurrentLocation();
+      }
     }
-    print('camera');
-    print(yoloResults);
+    logger.i(
+        "Address :$_currentAddress - Total Potholes ${totalPotholes.toString()}");
   }
 
   Future<void> startDetection() async {
